@@ -1,0 +1,43 @@
+#!/usr/bin/env fish
+
+set remote_name "origin"
+
+set --local options 'h/help' 'd/delete'
+argparse $options -- $argv
+
+if set --query _flag_help
+    echo "Remove branches not in remote. By default is a dry run"
+    echo ""
+    echo "Usage: rbnir [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  -h/--help       Prints help and exits"
+    echo "  -d/--delete     Deletes branches not in remote"
+    exit 0
+end
+
+set remote_branches (git branch -a | grep "remotes/$remote_name" | awk '{ print $1 }')
+set local_branches (git branch -a | grep -v "remotes/$remote_name" | grep -v "*" | awk '{ print $1 }')
+
+for local_branch in $local_branches
+    set is_in_remote false
+    
+    for remote_branch in $remote_branches
+        set remote_branch_without_prefix (string replace "remotes/$remote_name/" '' $remote_branch)
+
+        if [ $remote_branch_without_prefix = $local_branch ]
+            set is_in_remote true
+        end
+    end
+
+    if $is_in_remote
+        echo "✅ $local_branch"
+    else        
+        if set --query _flag_delete
+            git branch -D $local_branch
+            echo "🗑️ $local_branch"
+        else
+            echo "❌ $local_branch"
+        end
+    end
+end
